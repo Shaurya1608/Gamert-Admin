@@ -182,6 +182,31 @@ api.interceptors.response.use(
         }
     }
 
+    // 🛡️ HANDLE RE-AUTHENTICATION (Admin Actions)
+    if (error.response?.data?.code === "REAUTH_REQUIRED") {
+        return new Promise((resolve, reject) => {
+            const handleSuccess = () => {
+                cleanup();
+                // Retry original request
+                api(originalRequest).then(resolve).catch(reject);
+            };
+            const handleCancel = () => {
+                cleanup();
+                reject(error);
+            };
+            const cleanup = () => {
+                window.removeEventListener('reauth-success', handleSuccess);
+                window.removeEventListener('reauth-cancelled', handleCancel);
+            };
+
+            window.addEventListener('reauth-success', handleSuccess);
+            window.addEventListener('reauth-cancelled', handleCancel);
+            
+            // Trigger UI
+            window.dispatchEvent(new CustomEvent('reauth-required'));
+        });
+    }
+
     return Promise.reject(error);
   }
 );

@@ -19,7 +19,8 @@ import {
   CreditCard,
   Gem,
   Sparkles,
-  Trophy
+  Trophy,
+  ShieldAlert
 } from "lucide-react";
 
 import api from "../services/api";
@@ -44,6 +45,8 @@ import OrdersManagement from "../components/admin/OrdersManagement";
 import PassManagement from "../components/admin/PassManagement";
 import GemManagement from "../components/admin/GemManagement";
 import SeasonManagement from "../components/admin/SeasonManagement";
+import SecurityManagement from "../components/admin/SecurityManagement";
+import GlobalSessionMonitor from "../components/admin/GlobalSessionMonitor";
 
 // Modals
 import MissionModal from "../components/admin/MissionModal";
@@ -239,6 +242,8 @@ const AdminPage = () => {
 
   const sidebarItems = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3, roles: ["admin", "moderator"], requiredPermission: "view_analytics" },
+    { id: "security", label: "Security", icon: ShieldAlert, roles: ["admin"], requiredPermission: "manage_settings" },
+    { id: "global-pulse", label: "Global Pulse", icon: ShieldAlert, roles: ["admin"], requiredPermission: "manage_sessions" },
     { id: "users", label: "User Management", icon: Users, roles: ["admin", "moderator"], requiredPermission: "manage_users" },
     { id: "permissions", label: "Permissions", icon: Lock, roles: ["admin", "moderator"], requiredPermission: "manage_users" },
     { id: "settings", label: "Settings", icon: Settings, roles: ["admin", "moderator"], requiredPermission: "manage_settings" },
@@ -351,6 +356,42 @@ const AdminPage = () => {
     }
   };
 
+  // Handle Google OAuth re-authentication success
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('oauth') === 'success') {
+      toast.success("IDENTITY VERIFIED. ACCESS GRANTED.");
+      
+      // 🚀 Check for pending action to auto-resume
+      const pendingAction = localStorage.getItem('pendingAdminAction');
+      if (pendingAction) {
+        try {
+          const action = JSON.parse(pendingAction);
+          localStorage.removeItem('pendingAdminAction');
+          
+          // Only resume if action is recent (within 10 minutes)
+          const isRecent = action.timestamp && (Date.now() - action.timestamp < 10 * 60 * 1000);
+          
+          if (isRecent && action.type === 'DELETE_USER' && action.payload) {
+             const toastId = toast.loading("Resuming deletion protocol...");
+             executeUserDeletion(action.payload, toastId);
+          }
+        } catch (e) {
+          console.error("Failed to parse pending action:", e);
+        }
+      }
+
+      // Clean up the URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    if (urlParams.get('error') === 'reauth_mismatch') {
+      toast.error("IDENTITY MISMATCH: Please sign into the SAME Google account used for your current session.");
+      // Clean up the URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -388,6 +429,35 @@ const AdminPage = () => {
     }
   };
 
+  const executeUserDeletion = async (userId, existingToastId = null) => {
+    try {
+      const response = await api.delete(`/admin/users/${userId}`);
+      if (response.data.success) {
+        setUsers(users.filter((u) => u._id !== userId));
+        if (existingToastId) {
+          toast.success("Identity verified. User deleted successfully.", { id: existingToastId });
+        } else {
+          toast.success("User deleted successfully");
+        }
+      }
+    } catch (error) {
+      if (error.response?.status === 403 && error.response?.data?.code === "REAUTH_REQUIRED") {
+        localStorage.setItem('pendingAdminAction', JSON.stringify({
+          type: 'DELETE_USER',
+          payload: userId,
+          timestamp: Date.now()
+        }));
+      }
+
+      const message = error.response?.data?.message || "Failed to delete user";
+      if (existingToastId) {
+        toast.error(message, { id: existingToastId });
+      } else {
+        toast.error(message);
+      }
+    }
+  };
+
   const handleDeleteUser = async (userId) => {
     setConfirmModal({
       isOpen: true,
@@ -395,17 +465,7 @@ const AdminPage = () => {
       message: "This action cannot be undone.",
       confirmText: "Delete",
       type: "danger",
-      onConfirm: async () => {
-        try {
-          const response = await api.delete(`/admin/users/${userId}`);
-          if (response.data.success) {
-            setUsers(users.filter((u) => u._id !== userId));
-            toast.success("User deleted successfully");
-          }
-        } catch (error) {
-          toast.error(error.response?.data?.message || "Failed to delete user");
-        }
-      }
+      onConfirm: () => executeUserDeletion(userId)
     });
   };
 
@@ -1126,6 +1186,7 @@ const AdminPage = () => {
     { id: "manage_hero", label: "Manage Hero", description: "Control hero swiper & featured content" },
     { id: "manage_payments", label: "Manage Payments", description: "Control orders, passes & gems" },
     { id: "moderate_chat", label: "Moderate Chat", description: "Control chat access & communities" },
+    { id: "manage_sessions", label: "Manage Sessions", description: "God View: Monitor and terminate global pulses" },
   ];
 
   const roles = [
@@ -1307,6 +1368,8 @@ const AdminPage = () => {
                       onDelete={handleDeleteSeasonReward}
                    />
                 )}
+                {activeTab === "security" && <SecurityManagement />}
+                {activeTab === "global-pulse" && <GlobalSessionMonitor />}
             </AnimatePresence>
         </div>
       </main>

@@ -3,6 +3,7 @@ import { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { useAuth } from "./contexts/AuthContext";
+import { ReAuthProvider } from "./contexts/ReAuthContext";
 
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 
@@ -63,12 +64,14 @@ const App = () => {
         }}
       />
       
-      <Suspense fallback={<LoadingScreen />}>
-        <Routes>
-          <Route path="/" element={<AdminPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
+      <ReAuthProvider>
+        <Suspense fallback={<LoadingScreen />}>
+          <Routes>
+            <Route path="/" element={<AdminPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </ReAuthProvider>
     </>
   );
 };
