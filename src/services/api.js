@@ -9,6 +9,7 @@ const api = axios.create({
 // ⚡ REQUEST DEDUPLICATION & CACHING
 const pendingRequests = new Map();
 const responseCache = new Map();
+let csrfToken = null; // 🛡️ In-memory CSRF token for cross-domain support
 
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes default
 const CACHEABLE_METHODS = ['GET'];
@@ -74,6 +75,21 @@ api.interceptors.request.use(
     }
     const pendingPromise = new Promise((resolve) => { config.__resolvePending = resolve; });
     pendingRequests.set(cacheKey, pendingPromise);
+
+    // 🛡️ CSRF PROTECTION: Add token to mutating requests
+    if (["post", "put", "delete", "patch"].includes(config.method?.toLowerCase())) {
+        // First priority: In-memory token (Cross-domain safe)
+        // Second priority: Document cookie (Same-domain fallback)
+        const token = csrfToken || document.cookie
+            .split("; ")
+            .find((row) => row.startsWith("csrfToken="))
+            ?.split("=")[1];
+        
+        if (token) {
+            config.headers["x-csrf-token"] = token;
+        }
+    }
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -118,6 +134,12 @@ api.interceptors.response.use(
     if (isCacheable(response.config)) setCachedResponse(cacheKey, response);
     if (response.config.__resolvePending) response.config.__resolvePending();
     pendingRequests.delete(cacheKey);
+
+    // 🛡️ CAPTURE CSRF TOKEN FROM BODY
+    if (response.data?.csrfToken) {
+        csrfToken = response.data.csrfToken;
+    }
+
     return response;
   },
   async (error) => {
@@ -149,6 +171,17 @@ api.interceptors.response.use(
         return Promise.reject(refreshError);
       }
     }
+    // 🛡️ HANDLE CSRF FAILURES (Try once to refresh token)
+    if (error.response?.data?.code === "CSRF_ERROR" && !originalRequest._csrfRetry) {
+        originalRequest._csrfRetry = true;
+        try {
+            await api.get("/auth/csrf-token");
+            return api(originalRequest);
+        } catch (csrfErr) {
+            return Promise.reject(csrfErr);
+        }
+    }
+
     return Promise.reject(error);
   }
 );

@@ -75,6 +75,16 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
+    // 🛡️ INITIALIZE CSRF TOKEN (Safe for cross-domain)
+    const initCsrf = async () => {
+        try {
+            await api.get("/auth/csrf-token");
+        } catch (err) {
+            console.warn("CSRF Initialization failed. Mutating requests might fail.", err);
+        }
+    };
+    initCsrf();
+
     fetchUser();
     
     const handleProfileRefresh = () => refreshUser();
