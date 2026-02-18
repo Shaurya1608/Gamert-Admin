@@ -362,22 +362,39 @@ const AdminPage = () => {
     if (urlParams.get('oauth') === 'success') {
       toast.success("IDENTITY VERIFIED. ACCESS GRANTED.");
       
-      // 🚀 Check for pending action to auto-resume
       const pendingAction = localStorage.getItem('pendingAdminAction');
       if (pendingAction) {
         try {
           const action = JSON.parse(pendingAction);
           localStorage.removeItem('pendingAdminAction');
           
-          // Only resume if action is recent (within 10 minutes)
-          const isRecent = action.timestamp && (Date.now() - action.timestamp < 10 * 60 * 1000);
+          const isRecent = action.timestamp && (Date.now() - action.timestamp < 15 * 60 * 1000); // Increased to 15m for SSO flows
           
-          if (isRecent && action.type === 'DELETE_USER' && action.payload) {
-             const toastId = toast.loading("Resuming deletion protocol...");
-             executeUserDeletion(action.payload, toastId);
-          } else if (isRecent && action.type === 'UPDATE_PERMISSIONS' && action.payload) {
-             const toastId = toast.loading("Resuming permission protocol...");
-             executePermissionsUpdate(action.payload.userId, action.payload.permissions, toastId);
+          if (isRecent) {
+            const toastId = toast.loading(`Resuming ${action.type.replace('_', ' ').toLowerCase()} protocol...`);
+            
+            switch (action.type) {
+              case 'DELETE_USER':
+                executeUserDeletion(action.payload, toastId);
+                break;
+              case 'UPDATE_PERMISSIONS':
+                executePermissionsUpdate(action.payload.userId, action.payload.permissions, toastId);
+                break;
+              case 'UPDATE_ROLE':
+                executeRoleUpdate(action.payload.userId, action.payload.role, toastId);
+                break;
+              case 'UPDATE_STATUS':
+                executeStatusUpdate(action.payload.userId, action.payload.status, toastId);
+                break;
+              case 'TOGGLE_BAN':
+                executeToggleBan(action.payload.userId, action.payload.type, action.payload.currentValue, toastId);
+                break;
+              case 'BAN_USER':
+                executeBanUser(action.payload.userId, action.payload.username, action.payload.banExpires, action.payload.banReason, toastId);
+                break;
+              default:
+                toast.dismiss(toastId);
+            }
           }
         } catch (e) {
           console.error("Failed to parse pending action:", e);
@@ -430,13 +447,29 @@ const AdminPage = () => {
         }
       }
     } catch (error) {
-      const message = error.response?.data?.message || "Failed to update security protocols";
-      const toastOptions = error.response?.data?.code === "REAUTH_REQUIRED" 
-        ? { id: "reauth-toast" } 
-        : (existingToastId ? { id: existingToastId } : {});
-
-      toast.error(message, toastOptions);
+      handleAdminActionError(error, {
+        type: 'UPDATE_PERMISSIONS',
+        payload: { userId, permissions: newPermissions }
+      }, existingToastId);
     }
+  };
+
+  const handleAdminActionError = (error, context, existingToastId = null) => {
+    const isReauth = error.response?.status === 403 && error.response?.data?.code === "REAUTH_REQUIRED";
+    
+    if (isReauth && context) {
+      localStorage.setItem('pendingAdminAction', JSON.stringify({
+        ...context,
+        timestamp: Date.now()
+      }));
+    }
+
+    const message = error.response?.data?.message || `Failed to execute ${context?.type?.toLowerCase() || 'action'}`;
+    const toastOptions = isReauth 
+      ? { id: "reauth-toast" } 
+      : (existingToastId ? { id: existingToastId } : { id: "admin-action-error" });
+
+    toast.error(message, toastOptions);
   };
 
   const handlePermissionToggle = async (newPermissions) => {
@@ -444,14 +477,7 @@ const AdminPage = () => {
     try {
       await executePermissionsUpdate(selectedUser._id, newPermissions);
     } catch (error) {
-      if (error.response?.status === 403 && error.response?.data?.code === "REAUTH_REQUIRED") {
-         localStorage.setItem('pendingAdminAction', JSON.stringify({
-            type: 'UPDATE_PERMISSIONS',
-            payload: { userId: selectedUser._id, permissions: newPermissions },
-            timestamp: Date.now()
-         }));
-      }
-      throw error; // Rethrow to let the modal handle the loading state
+      throw error; 
     }
   };
 
@@ -467,20 +493,10 @@ const AdminPage = () => {
         }
       }
     } catch (error) {
-      if (error.response?.status === 403 && error.response?.data?.code === "REAUTH_REQUIRED") {
-        localStorage.setItem('pendingAdminAction', JSON.stringify({
-          type: 'DELETE_USER',
-          payload: userId,
-          timestamp: Date.now()
-        }));
-      }
-
-      const message = error.response?.data?.message || "Failed to delete user";
-      const toastOptions = error.response?.data?.code === "REAUTH_REQUIRED" 
-        ? { id: "reauth-toast" } 
-        : (existingToastId ? { id: existingToastId } : {});
-
-      toast.error(message, toastOptions);
+      handleAdminActionError(error, {
+        type: 'DELETE_USER',
+        payload: userId
+      }, existingToastId);
     }
   };
 
@@ -502,26 +518,36 @@ const AdminPage = () => {
       message: `Are you sure you want to change this user's role to ${newRole.toUpperCase()}? This will update their permissions immediately.`,
       confirmText: "Update Role",
       type: "warning",
-      onConfirm: async () => {
-        try {
-          setLoadingActions(prev => ({ ...prev, [userId]: true }));
-          const response = await api.put(
-            `/admin/users/${userId}/role`,
-            { role: newRole }
-          );
-          if (response.data.success) {
-            setUsers(users.map((u) => (u._id === userId ? response.data.data : u)));
-            if (selectedUser?._id === userId) setSelectedUser(response.data.data);
-            toast.success("Role updated successfully");
-          }
-        } catch (error) {
-          const toastOptions = error.response?.data?.code === "REAUTH_REQUIRED" ? { id: "reauth-toast" } : {};
-          toast.error(error.response?.data?.message || "Failed to update role", toastOptions);
-        } finally {
-          setLoadingActions(prev => ({ ...prev, [userId]: false }));
+      onConfirm: () => executeRoleUpdate(userId, newRole)
+    });
+  };
+
+  const executeRoleUpdate = async (userId, newRole, existingToastId = null) => {
+    try {
+      setLoadingActions(prev => ({ ...prev, [userId]: true }));
+      const response = await api.put(
+        `/admin/users/${userId}/role`,
+        { role: newRole }
+      );
+      if (response.data.success) {
+        setUsers(users.map((u) => (u._id === userId ? response.data.data : u)));
+        if (selectedUser?._id === userId) setSelectedUser(response.data.data);
+        
+        const message = "Role updated successfully";
+        if (existingToastId) {
+          toast.success(message, { id: existingToastId });
+        } else {
+          toast.success(message);
         }
       }
-    });
+    } catch (error) {
+      handleAdminActionError(error, {
+        type: 'UPDATE_ROLE',
+        payload: { userId, role: newRole }
+      }, existingToastId);
+    } finally {
+      setLoadingActions(prev => ({ ...prev, [userId]: false }));
+    }
   };
 
   const handleStatusChange = async (userId, newStatus) => {
@@ -531,6 +557,10 @@ const AdminPage = () => {
       setShowBanModal(true);
       return;
     }
+    executeStatusUpdate(userId, newStatus);
+  };
+
+  const executeStatusUpdate = async (userId, newStatus, existingToastId = null) => {
     try {
       const response = await api.put(
         `/admin/users/${userId}/status`,
@@ -539,53 +569,23 @@ const AdminPage = () => {
       if (response.data.success) {
         setUsers(users.map((u) => (u._id === userId ? response.data.data : u)));
         if (selectedUser?._id === userId) setSelectedUser(response.data.data);
-        toast.success(`User status updated to ${newStatus}`);
+        
+        const message = `User status updated to ${newStatus}`;
+        if (existingToastId) {
+          toast.success(message, { id: existingToastId });
+        } else {
+          toast.success(message);
+        }
       }
     } catch (error) {
-      const toastOptions = error.response?.data?.code === "REAUTH_REQUIRED" ? { id: "reauth-toast" } : {};
-      toast.error(error.response?.data?.message || "Failed to update status", toastOptions);
+      handleAdminActionError(error, {
+        type: 'UPDATE_STATUS',
+        payload: { userId, status: newStatus }
+      }, existingToastId);
     }
   };
 
   const toggleUserBan = async (userId, type, currentValue) => {
-    // 🛡️ Helper function to execute the API call
-    const executeToggle = async () => {
-        try {
-            let endpoint = "";
-            let data = {};
-
-            if (type === "isBanned") {
-                endpoint = `/admin/users/${userId}/status`;
-                data = { status: "active" };
-            } else if (type === "chatBan") {
-                endpoint = `/admin/users/${userId}/chat-ban`;
-                data = { chatBan: !currentValue };
-            } else if (type === "joinBan") {
-                endpoint = `/admin/users/${userId}/join-ban`;
-                data = { joinBan: !currentValue };
-            }
-
-            // set local loading state for immediate feedback if needed, 
-            // but relying on AdminPage's global loading/toast is usually enough.
-            // However, UserManagement has local loading state 'toggleLoading'.
-            // The prop passed down is 'toggleUserBan'.
-            
-            const response = await api.put(endpoint, data);
-            if (response.data.success) {
-                // FORCE UPDATE STATE properly
-                const updatedUser = response.data.data;
-                setUsers(prevUsers => prevUsers.map(u => u._id === userId ? updatedUser : u));
-                if (selectedUser && selectedUser._id === userId) {
-                    setSelectedUser(updatedUser);
-                }
-                toast.success("Protocol updated successfully");
-            }
-        } catch (error) {
-            const toastOptions = error.response?.data?.code === "REAUTH_REQUIRED" ? { id: "reauth-toast" } : {};
-            toast.error(error.response?.data?.message || "Operation failed", toastOptions);
-        }
-    };
-
     if (type === "isBanned" && !currentValue) {
         // 🛑 BANNING FLOW (Special Modal)
         const targetUser = users.find(u => u._id === userId);
@@ -601,38 +601,86 @@ const AdminPage = () => {
         (!currentValue ? "Revoke Protocol Entry" : "Restore Protocol Entry");
 
     setConfirmModal({
-      isOpen: true,
-      title: `${actionLabel}?`,
-      message: `Are you sure you want to perform this action on this user?`,
-      confirmText: "Confirm",
-      type: !currentValue ? "danger" : "warning", // Red for banning/revoking, Orange for restoring
-      onConfirm: executeToggle
+        isOpen: true,
+        title: `${actionLabel}?`,
+        message: `Verify intervention: ${actionLabel} for this operative?`,
+        confirmText: "Execute",
+        type: type === "isBanned" ? "warning" : "danger",
+        onConfirm: () => executeToggleBan(userId, type, currentValue)
     });
   };
 
+  const executeToggleBan = async (userId, type, currentValue, existingToastId = null) => {
+    try {
+        let endpoint = "";
+        let data = {};
+
+        if (type === "isBanned") {
+            endpoint = `/admin/users/${userId}/status`;
+            data = { status: "active" };
+        } else if (type === "chatBan") {
+            endpoint = `/admin/users/${userId}/chat-ban`;
+            data = { chatBan: !currentValue };
+        } else if (type === "joinBan") {
+            endpoint = `/admin/users/${userId}/join-ban`;
+            data = { joinBan: !currentValue };
+        }
+
+        const response = await api.put(endpoint, data);
+        if (response.data.success) {
+            const updatedUser = response.data.data;
+            setUsers(prevUsers => prevUsers.map(u => u._id === userId ? updatedUser : u));
+            if (selectedUser && selectedUser._id === userId) {
+                setSelectedUser(updatedUser);
+            }
+            
+            const message = "Protocol updated successfully";
+            if (existingToastId) {
+              toast.success(message, { id: existingToastId });
+            } else {
+              toast.success(message);
+            }
+        }
+    } catch (error) {
+        handleAdminActionError(error, {
+            type: 'TOGGLE_BAN',
+            payload: { userId, type, currentValue }
+        }, existingToastId);
+    }
+  };
 
   const confirmToggleBan = async () => {
+    executeBanUser(banForm.userId, banForm.username, banForm.banExpires, banForm.banReason);
+  };
+
+  const executeBanUser = async (userId, username, banExpires, banReason, existingToastId = null) => {
     try {
       setLoading(true);
       const response = await api.put(
-        `/admin/users/${banForm.userId}/status`,
-        { status: "banned", banExpires: banForm.banExpires || null, banReason: banForm.banReason }
+        `/admin/users/${userId}/status`,
+        { status: "banned", banExpires: banExpires || null, banReason: banReason }
       );
       if (response.data.success) {
-        // FORCE UPDATE STATE properly (Functional Update)
         const updatedUser = response.data.data;
-        setUsers(prevUsers => prevUsers.map((u) => (u._id === banForm.userId ? updatedUser : u)));
+        setUsers(prevUsers => prevUsers.map((u) => (u._id === userId ? updatedUser : u)));
         
-        // Also update selectedUser if it's the one being banned
-        if (selectedUser && selectedUser._id === banForm.userId) {
+        if (selectedUser && selectedUser._id === userId) {
             setSelectedUser(updatedUser);
         }
         
         setShowBanModal(false);
-        toast.success(`Protocol Terminated: ${banForm.username} has been banned.`);
+        const message = `Protocol Terminated: ${username} has been banned.`;
+        if (existingToastId) {
+          toast.success(message, { id: existingToastId });
+        } else {
+          toast.success(message);
+        }
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to ban user");
+      handleAdminActionError(error, {
+        type: 'BAN_USER',
+        payload: { userId, username, banExpires, banReason }
+      }, existingToastId);
     } finally {
       setLoading(false);
     }

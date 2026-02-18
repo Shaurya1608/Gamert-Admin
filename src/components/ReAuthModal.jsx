@@ -57,7 +57,8 @@ const ReAuthModal = ({ isOpen, onClose, onSuccess }) => {
   };
 
   const handleGoogleReauth = () => {
-    window.location.href = `http://localhost:5000/auth/google/reauth?state=${encodeURIComponent(window.location.href)}`;
+    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    window.location.href = `${apiUrl}/auth/google/reauth?state=${encodeURIComponent(window.location.href)}`;
   };
 
   return (
