@@ -332,7 +332,7 @@ const AdminPage = () => {
       const response = await api.get("/admin/stats");
       if (response.data.success) setStats(response.data.data);
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to fetch stats");
+      toast.error(error.response?.data?.message || "Failed to fetch stats", { id: "fetch-stats-error" });
     } finally {
       setLoading(false);
     }
@@ -375,6 +375,9 @@ const AdminPage = () => {
           if (isRecent && action.type === 'DELETE_USER' && action.payload) {
              const toastId = toast.loading("Resuming deletion protocol...");
              executeUserDeletion(action.payload, toastId);
+          } else if (isRecent && action.type === 'UPDATE_PERMISSIONS' && action.payload) {
+             const toastId = toast.loading("Resuming permission protocol...");
+             executePermissionsUpdate(action.payload.userId, action.payload.permissions, toastId);
           }
         } catch (e) {
           console.error("Failed to parse pending action:", e);
@@ -403,29 +406,52 @@ const AdminPage = () => {
         setPagination(response.data.pagination || { page: 1, pages: 1 });
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to fetch users");
+      toast.error(error.response?.data?.message || "Failed to fetch users", { id: "fetch-users-error" });
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePermissionToggle = async (permissionId) => {
-    if (!selectedUser) return;
+  const executePermissionsUpdate = async (userId, newPermissions, existingToastId = null) => {
     try {
-      const updatedPermissions = selectedUser.permissions.includes(permissionId)
-        ? selectedUser.permissions.filter((p) => p !== permissionId)
-        : [...selectedUser.permissions, permissionId];
       const response = await api.put(
-        `/admin/users/${selectedUser._id}/permissions`,
-        { permissions: updatedPermissions }
+        `/admin/users/${userId}/permissions`,
+        { permissions: newPermissions }
       );
       if (response.data.success) {
-        setSelectedUser(response.data.data);
-        setUsers(users.map((u) => (u._id === selectedUser._id ? response.data.data : u)));
-        toast.success("Permission updated");
+        setUsers(prev => prev.map((u) => (u._id === userId ? response.data.data : u)));
+        if (selectedUser?._id === userId) setSelectedUser(response.data.data);
+        
+        const message = "Identity Protocols Updated Successfully";
+        if (existingToastId) {
+          toast.success(message, { id: existingToastId });
+        } else {
+          toast.success(message);
+        }
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to update permission");
+      const message = error.response?.data?.message || "Failed to update security protocols";
+      const toastOptions = error.response?.data?.code === "REAUTH_REQUIRED" 
+        ? { id: "reauth-toast" } 
+        : (existingToastId ? { id: existingToastId } : {});
+
+      toast.error(message, toastOptions);
+    }
+  };
+
+  const handlePermissionToggle = async (newPermissions) => {
+    if (!selectedUser) return;
+    try {
+      await executePermissionsUpdate(selectedUser._id, newPermissions);
+    } catch (error) {
+      if (error.response?.status === 403 && error.response?.data?.code === "REAUTH_REQUIRED") {
+         localStorage.setItem('pendingAdminAction', JSON.stringify({
+            type: 'UPDATE_PERMISSIONS',
+            payload: { userId: selectedUser._id, permissions: newPermissions },
+            timestamp: Date.now()
+         }));
+      }
+      throw error; // Rethrow to let the modal handle the loading state
     }
   };
 
@@ -450,11 +476,11 @@ const AdminPage = () => {
       }
 
       const message = error.response?.data?.message || "Failed to delete user";
-      if (existingToastId) {
-        toast.error(message, { id: existingToastId });
-      } else {
-        toast.error(message);
-      }
+      const toastOptions = error.response?.data?.code === "REAUTH_REQUIRED" 
+        ? { id: "reauth-toast" } 
+        : (existingToastId ? { id: existingToastId } : {});
+
+      toast.error(message, toastOptions);
     }
   };
 
@@ -489,7 +515,8 @@ const AdminPage = () => {
             toast.success("Role updated successfully");
           }
         } catch (error) {
-          toast.error(error.response?.data?.message || "Failed to update role");
+          const toastOptions = error.response?.data?.code === "REAUTH_REQUIRED" ? { id: "reauth-toast" } : {};
+          toast.error(error.response?.data?.message || "Failed to update role", toastOptions);
         } finally {
           setLoadingActions(prev => ({ ...prev, [userId]: false }));
         }
@@ -515,7 +542,8 @@ const AdminPage = () => {
         toast.success(`User status updated to ${newStatus}`);
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to update status");
+      const toastOptions = error.response?.data?.code === "REAUTH_REQUIRED" ? { id: "reauth-toast" } : {};
+      toast.error(error.response?.data?.message || "Failed to update status", toastOptions);
     }
   };
 
@@ -553,9 +581,8 @@ const AdminPage = () => {
                 toast.success("Protocol updated successfully");
             }
         } catch (error) {
-            toast.error(error.response?.data?.message || "Operation failed");
-            // If failed, we might want to revert the toggle in UI if we were optimistic, 
-            // but here we didn't optimistic update.
+            const toastOptions = error.response?.data?.code === "REAUTH_REQUIRED" ? { id: "reauth-toast" } : {};
+            toast.error(error.response?.data?.message || "Operation failed", toastOptions);
         }
     };
 
@@ -1404,8 +1431,8 @@ const AdminPage = () => {
         editingReward={editingReward}
         rewardForm={rewardForm}
         setRewardForm={setRewardForm}
-        submitReward={submitReward}
         loading={loading}
+        submitReward={submitReward}
       />
       <CategoryModal
         showCategoryModal={showCategoryModal}

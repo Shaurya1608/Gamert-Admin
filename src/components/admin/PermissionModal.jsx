@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Shield, Lock, AlertTriangle } from "lucide-react";
+import { X, Shield, Lock, AlertTriangle, CheckSquare, Square } from "lucide-react";
 import { getSafeUserAvatar } from "../../utils/avatarUtils";
 import ToggleSwitch from "./ToggleSwitch";
 
@@ -11,7 +11,45 @@ const PermissionModal = ({
   allPermissions,
   handlePermissionToggle
 }) => {
+  const [tempPermissions, setTempPermissions] = useState([]);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Initialize local permissions when modal opens or user changes
+  useEffect(() => {
+    if (selectedUser) {
+      setTempPermissions(selectedUser.permissions || []);
+    }
+  }, [selectedUser, showPermissionModal]);
+
   if (!showPermissionModal || !selectedUser) return null;
+
+  const handleLocalToggle = (permissionId) => {
+    setTempPermissions(prev => 
+      prev.includes(permissionId)
+        ? prev.filter(p => p !== permissionId)
+        : [...prev, permissionId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    setTempPermissions(allPermissions.map(p => p.id));
+  };
+
+  const handleRevokeAll = () => {
+    setTempPermissions([]);
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await handlePermissionToggle(tempPermissions);
+      setShowPermissionModal(false);
+    } catch (error) {
+      console.error("Failed to save permissions:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -21,7 +59,7 @@ const PermissionModal = ({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex items-center justify-center p-4"
-          onClick={() => setShowPermissionModal(false)}
+          onClick={() => !isSaving && setShowPermissionModal(false)}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -70,8 +108,9 @@ const PermissionModal = ({
                 </div>
 
                 <button
-                  onClick={() => setShowPermissionModal(false)}
-                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors border border-white/5"
+                  onClick={() => !isSaving && setShowPermissionModal(false)}
+                  disabled={isSaving}
+                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors border border-white/5 disabled:opacity-50"
                 >
                   <X size={20} />
                 </button>
@@ -83,27 +122,49 @@ const PermissionModal = ({
               className="p-6 md:p-8 overflow-y-auto custom-scrollbar flex-1 min-h-0"
               onWheel={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center gap-2 mb-6">
-                <Lock className="text-purple-500" size={16} />
-                <h3 className="text-sm font-black text-white uppercase tracking-widest">Access Control Matrix</h3>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <Lock className="text-purple-500" size={16} />
+                  <h3 className="text-sm font-black text-white uppercase tracking-widest">Access Control Matrix</h3>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={handleSelectAll}
+                    disabled={isSaving}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-[9px] font-black text-purple-400 uppercase tracking-widest hover:bg-purple-500/20 transition-all disabled:opacity-50"
+                  >
+                    <CheckSquare size={12} />
+                    Activate All
+                  </button>
+                  <button 
+                    onClick={handleRevokeAll}
+                    disabled={isSaving}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-[9px] font-black text-red-400 uppercase tracking-widest hover:bg-red-500/20 transition-all disabled:opacity-50"
+                  >
+                    <Square size={12} />
+                    Revoke All
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {allPermissions.map((permission, index) => {
-                  const hasPermission = selectedUser.permissions.includes(permission.id);
+                  const hasPermission = tempPermissions.includes(permission.id);
                   return (
                     <motion.div
                       key={permission.id}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.05 }}
-                      onClick={() => handlePermissionToggle(permission.id)}
+                      onClick={() => !isSaving && handleLocalToggle(permission.id)}
                       className={`
                         group relative p-4 rounded-xl border transition-all duration-300 cursor-pointer
                         ${hasPermission 
                           ? 'bg-purple-900/10 border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.1)]' 
                           : 'bg-white/[0.02] border-white/5 hover:border-white/10'
                         }
+                        ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}
                       `}
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -123,6 +184,7 @@ const PermissionModal = ({
                             onChange={() => {}} // Controlled by wrapper onClick
                             size="sm"
                             color="purple"
+                            disabled={isSaving}
                           />
                         </div>
                       </div>
@@ -148,15 +210,17 @@ const PermissionModal = ({
             <div className="p-6 border-t border-white/5 bg-white/[0.02] flex justify-end gap-3">
               <button
                 onClick={() => setShowPermissionModal(false)}
-                className="px-6 py-2.5 rounded-xl border border-white/10 text-xs font-black text-gray-400 uppercase tracking-widest hover:bg-white/5 hover:text-white transition-colors"
+                disabled={isSaving}
+                className="px-6 py-2.5 rounded-xl border border-white/10 text-xs font-black text-gray-400 uppercase tracking-widest hover:bg-white/5 hover:text-white transition-colors disabled:opacity-50"
               >
                 Close Panel
               </button>
               <button
-                onClick={() => setShowPermissionModal(false)}
-                className="px-6 py-2.5 rounded-xl bg-purple-600 text-xs font-black text-white uppercase tracking-widest shadow-lg shadow-purple-600/20 hover:bg-purple-500 transition-all hover:scale-105 active:scale-95"
+                onClick={handleSave}
+                disabled={isSaving}
+                className="px-6 py-2.5 rounded-xl bg-purple-600 text-xs font-black text-white uppercase tracking-widest shadow-lg shadow-purple-600/20 hover:bg-purple-500 transition-all hover:scale-105 active:scale-95 flex items-center gap-2 disabled:opacity-50 disabled:hover:scale-100"
               >
-                Save Protocols
+                {isSaving ? "Updating Protocols..." : "Save Protocols"}
               </button>
             </div>
           </motion.div>
@@ -177,6 +241,7 @@ const PermissionModal = ({
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: rgba(168, 85, 247, 0.5);
+          border-radius: 10px;
         }
       `}</style>
     </AnimatePresence>
