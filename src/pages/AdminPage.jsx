@@ -611,6 +611,17 @@ const AdminPage = () => {
     }
   };
 
+  const handleLogout = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Exit System?",
+      message: "Are you sure you want to terminate your administrative session?",
+      confirmText: "Exit",
+      type: "danger",
+      onConfirm: () => logout()
+    });
+  };
+
   const fetchGames = async () => {
     try {
       setLoading(true);
@@ -1207,7 +1218,7 @@ const AdminPage = () => {
         setIsSidebarCollapsed={setIsSidebarCollapsed}
         sidebarItems={sidebarItems}
         navigate={navigate}
-        logout={logout}
+        logout={handleLogout}
       />
 
       <main className="flex-1 relative bg-black overflow-x-hidden">
