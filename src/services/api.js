@@ -15,7 +15,7 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes default
 const CACHEABLE_METHODS = ['GET'];
 const CACHE_EXCLUSIONS = [
   '/auth/refresh', '/auth/logout', '/auth/me', '/auth/streak-info', 
-  '/api/notifications', '/admin', '/api/admin', '/api/arena', 
+  '/api/notifications', '/api/arena', 
   '/api/missions', '/auth/daily-quests', '/api/weekend-missions', 
   '/auth/inventory', '/api/friends', '/api/orders', '/admin-rewards', 
   '/profile/me', '/api/system'
