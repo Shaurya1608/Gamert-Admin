@@ -322,7 +322,7 @@ const AdminPage = () => {
     if (activeTab === "hero") fetchHeroSlides();
     if (activeTab === "gems") fetchGemPackagesAdmin();
     if (activeTab === "season_rewards") fetchSeasonRewardsAdmin();
-  }, [activeTab, searchQuery, pagination?.page, user]);
+  }, [activeTab, searchQuery, modSearch, pagination?.page, user]);
 
   // --- API Functions ---
 
@@ -1088,8 +1088,17 @@ const AdminPage = () => {
   const fetchModerationUsers = async () => {
     try {
       setLoadingMod(true);
-      const res = await api.get("/admin/chat/users");
-      if (res.data.success) setModUsers(res.data.users);
+      const res = await api.get("/admin/chat/users", {
+        params: { 
+          page: pagination.page, 
+          limit: 10, 
+          search: modSearch 
+        }
+      });
+      if (res.data.success) {
+        setModUsers(res.data.users);
+        setPagination(res.data.pagination || { page: 1, pages: 1 });
+      }
     } catch (err) {
       toast.error("Failed to load users");
     } finally {
@@ -1395,6 +1404,9 @@ const AdminPage = () => {
                     modSearch={modSearch}
                     setModSearch={setModSearch}
                     toggleUserBan={toggleUserBan}
+                    pagination={pagination}
+                    setPagination={setPagination}
+                    loading={loadingMod}
                   />
                 )}
                 {activeTab === "hero" && (

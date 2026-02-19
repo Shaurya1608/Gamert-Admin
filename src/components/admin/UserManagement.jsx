@@ -56,30 +56,30 @@ const UserManagement = ({
 
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-            <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tighter italic leading-none flex items-center gap-3">
-             <div className="p-2 bg-purple-500/10 rounded-xl border border-purple-500/20">
-                <Ban className="text-purple-500" size={20} />
+            <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tighter italic leading-none flex items-center gap-2">
+             <div className="p-1.5 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                <Users className="text-purple-500" size={16} />
              </div>
-             Moderation Management
+             User Infrastructure
           </h2>
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 mt-2 pl-1">
-            Infrastructure Identity Control
+          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-500 mt-1.5 pl-1">
+            Identity Control & Access Protocols
           </p>
         </div>
         
         {/* Search & Filter */}
         <div className="w-full md:w-auto relative group">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-purple-400 transition-colors" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 group-focus-within:text-purple-400 transition-colors" />
           <input
             type="text"
             placeholder="FILTER IDENTITIES..."
             value={localSearch}
             onChange={(e) => setLocalSearch(e.target.value)}
-             className="w-full md:w-64 bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-[10px] font-black tracking-widest text-white placeholder-gray-600 focus:border-purple-500/50 outline-none uppercase transition-all shadow-[0_0_20px_rgba(0,0,0,0.5)] focus:shadow-[0_0_20px_rgba(168,85,247,0.2)]"
+             className="w-full md:w-64 bg-black/40 border border-white/10 rounded-lg pl-9 pr-4 py-2 text-[10px] font-black tracking-widest text-white placeholder-gray-600 focus:border-purple-500/50 outline-none uppercase transition-all shadow-[0_0_20px_rgba(0,0,0,0.5)] focus:shadow-[0_0_20px_rgba(168,85,247,0.2)]"
           />
         </div>
       </div>
@@ -114,12 +114,12 @@ const UserManagement = ({
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-white/[0.01] border-b border-white/5">
-                <th className="px-6 py-4 text-left text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">User Profile</th>
-                <th className="px-6 py-4 text-left text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">Role</th>
-                <th className="px-6 py-4 text-center text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">Global Access</th>
-                <th className="px-6 py-4 text-center text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">Chat Rights</th>
-                <th className="px-6 py-4 text-center text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">Protocol Entry</th>
-                <th className="px-6 py-4 text-center text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">Actions</th>
+                <th className="px-6 py-3 text-left text-[8px] font-black text-gray-500 uppercase tracking-[0.2em]">User Profile</th>
+                <th className="px-6 py-3 text-left text-[8px] font-black text-gray-500 uppercase tracking-[0.2em]">Role</th>
+                <th className="px-6 py-3 text-center text-[8px] font-black text-gray-500 uppercase tracking-[0.2em]">Access</th>
+                <th className="px-6 py-3 text-center text-[8px] font-black text-gray-500 uppercase tracking-[0.2em]">Chat</th>
+                <th className="px-6 py-3 text-center text-[8px] font-black text-gray-500 uppercase tracking-[0.2em]">Entry</th>
+                <th className="px-6 py-3 text-center text-[8px] font-black text-gray-500 uppercase tracking-[0.2em]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -132,22 +132,22 @@ const UserManagement = ({
                     transition={{ delay: index * 0.03 }}
                     className="group hover:bg-white/[0.02] transition-colors"
                   >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-4">
+                    <td className="px-6 py-2.5">
+                      <div className="flex items-center gap-3">
                         <div className="relative shrink-0">
-                           <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/10 group-hover:border-purple-500/30 transition-colors">
+                           <div className="w-8 h-8 rounded-lg overflow-hidden border border-white/10 group-hover:border-purple-500/30 transition-colors">
                             <img 
                               src={getSafeUserAvatar(user)} 
                               className="w-full h-full object-cover"
                               alt={user.username}
                             />
                           </div>
-                          <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-[#0c0c0c] ${user.status === 'active' || !user.isBanned ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'}`} />
+                          <div className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-[#0c0c0c] ${user.status === 'active' || !user.isBanned ? 'bg-green-500' : 'bg-red-500'}`} />
                         </div>
                         <div>
-                          <p className="font-black text-[13px] text-white uppercase tracking-tight leading-none group-hover:text-purple-400 transition-colors">{user.username}</p>
-                          <p className="text-[9px] text-gray-600 font-bold tracking-wider mt-1">{user.email.toLowerCase()}</p>
-                          <p className="text-[8px] text-gray-700 font-bold tracking-wider mt-0.5">ID: {user._id.slice(-6).toUpperCase()}</p>
+                          <p className="font-black text-[12px] text-white uppercase tracking-tight leading-none group-hover:text-purple-400 transition-colors">{user.username}</p>
+                          <p className="text-[8px] text-gray-600 font-bold tracking-wider mt-0.5">{user.email.toLowerCase()}</p>
+                          <p className="text-[7px] text-gray-700 font-bold tracking-wider mt-0.5">ID: {user._id.slice(-6).toUpperCase()}</p>
                         </div>
                       </div>
                     </td>
@@ -178,74 +178,71 @@ const UserManagement = ({
                       )}
                     </td>
 
-                    <td className="px-6 py-4">
-                       <div className="flex flex-col items-center gap-2">
+                    <td className="px-6 py-2.5">
+                       <div className="flex flex-col items-center gap-1">
                          <ToggleSwitch
                            enabled={user.status === 'active' && !user.isBanned}
                            onChange={() => handleToggle(user._id, "isBanned", user.isBanned)}
-                           label="Global Access"
                            disabled={user.role === 'admin' || user._id === currentUser?._id || toggleLoading[`${user._id}-isBanned`]}
                            color={user.status === 'active' && !user.isBanned ? "green" : "red"}
-                           size="md"
+                           size="sm"
                          />
-                         <span className={`text-[8px] font-black uppercase tracking-wider ${user.status === 'active' && !user.isBanned ? 'text-green-400' : 'text-red-400'}`}>
-                           {user.status === 'active' && !user.isBanned ? 'Authorized' : 'Terminated'}
+                         <span className={`text-[7px] font-black uppercase tracking-wider ${user.status === 'active' && !user.isBanned ? 'text-green-500/70' : 'text-red-500/70'}`}>
+                           {user.status === 'active' && !user.isBanned ? 'Active' : 'Banned'}
                          </span>
                        </div>
                     </td>
 
-                    <td className="px-6 py-4">
-                       <div className="flex flex-col items-center gap-2">
+                    <td className="px-6 py-2.5">
+                       <div className="flex flex-col items-center gap-1">
                          <ToggleSwitch
                            enabled={!user.chatBan}
                            onChange={() => handleToggle(user._id, "chatBan", user.chatBan)}
-                           label="Chat Rights"
                            disabled={user.role === 'admin' || user._id === currentUser?._id || toggleLoading[`${user._id}-chatBan`]}
                            color={!user.chatBan ? "blue" : "red"}
-                           size="md"
+                           size="sm"
                          />
-                         <span className={`text-[8px] font-black uppercase tracking-wider ${!user.chatBan ? 'text-blue-400' : 'text-orange-400'}`}>
-                           {!user.chatBan ? 'Verified' : 'Muted'}
+                         <span className={`text-[7px] font-black uppercase tracking-wider ${!user.chatBan ? 'text-blue-500/70' : 'text-orange-500/70'}`}>
+                           {!user.chatBan ? 'Allowed' : 'Muted'}
                          </span>
                        </div>
                     </td>
 
-                    <td className="px-6 py-4">
-                       <div className="flex flex-col items-center gap-2">
+                    <td className="px-6 py-2.5">
+                       <div className="flex flex-col items-center gap-1">
                          <ToggleSwitch
                            enabled={!user.joinBan}
                            onChange={() => handleToggle(user._id, "joinBan", user.joinBan)}
-                           label="Protocol Entry"
                            disabled={user.role === 'admin' || user._id === currentUser?._id || toggleLoading[`${user._id}-joinBan`]}
                            color={!user.joinBan ? "purple" : "red"}
-                           size="md"
+                           size="sm"
                          />
-                         <span className={`text-[8px] font-black uppercase tracking-wider ${!user.joinBan ? 'text-emerald-400' : 'text-yellow-400'}`}>
-                           {!user.joinBan ? 'Granted' : 'Restricted'}
+                         <span className={`text-[7px] font-black uppercase tracking-wider ${!user.joinBan ? 'text-emerald-500/70' : 'text-yellow-500/70'}`}>
+                           {!user.joinBan ? 'Allowed' : 'Restricted'}
                          </span>
                        </div>
                     </td>
 
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex gap-2 justify-center opacity-70 group-hover:opacity-100 transition-opacity">
+                    <td className="px-6 py-2.5 text-center">
+                      <div className="flex gap-1.5 justify-center opacity-70 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => {
                             setSelectedUser(user);
                             setShowPermissionModal(true);
                           }}
                           disabled={user.role === 'admin' || user._id === currentUser?._id}
-                          className="p-2 rounded-lg bg-white/[0.03] text-gray-500 hover:text-white hover:bg-white/[0.08] transition border border-white/5 disabled:opacity-30 disabled:cursor-not-allowed"
-                          title={user.role === 'admin' ? "Administrative Override Blocked" : user._id === currentUser?._id ? "Self-Permission Modification Restricted" : "Edit Permissions"}
+                          className="p-1.5 rounded-lg bg-white/[0.03] text-gray-500 hover:text-white hover:bg-white/[0.08] transition border border-white/5 disabled:opacity-30 disabled:cursor-not-allowed"
+                          title={user.role === 'admin' ? "Locked" : "Permissions"}
                         >
-                          <Lock size={14} />
+                          <Lock size={12} />
                         </button>
                         <button
                           onClick={() => handleDeleteUser(user._id)}
                           disabled={user.role === 'admin' || user._id === currentUser?._id}
-                          className="p-2 rounded-lg bg-red-500/5 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 transition border border-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed"
-                          title={user.role === 'admin' ? "System Identity Protected" : user._id === currentUser?._id ? "Self-Deletion Restricted" : "Delete User"}
+                          className="p-1.5 rounded-lg bg-red-500/5 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 transition border border-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                          title={user.role === 'admin' ? "Protected" : "Delete"}
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={12} />
                         </button>
                       </div>
                     </td>
@@ -376,31 +373,58 @@ const UserManagement = ({
         </div>
       </div>
 
-      {/* Pagination */}
-      {pagination.pages > 1 && (
-        <div className="flex justify-center gap-2 mt-8">
-          {Array.from(
-            { length: pagination.pages },
-            (_, i) => i + 1,
-          ).map((page) => (
-            <button
-              key={page}
-              onClick={() => setPagination({ ...pagination, page })}
-              className={`w-10 h-10 rounded-xl transition font-bold text-xs ${
-                pagination.page === page
-                  ? "bg-purple-600 text-white shadow-lg shadow-purple-600/25"
-                  : "bg-white/5 text-gray-500 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              {page}
-            </button>
-          ))}
+      {/* Pagination bar compact padding */}
+      {pagination && pagination.pages > 1 && (
+        <div className="flex flex-wrap justify-center gap-2 mt-6 px-4">
+          {(() => {
+            const current = pagination.page;
+            const total = pagination.pages;
+            const delta = 1;
+            const range = [];
+            const rangeWithDots = [];
+            let l;
+
+            for (let i = 1; i <= total; i++) {
+              if (i === 1 || i === total || (i >= current - delta && i <= current + delta)) {
+                range.push(i);
+              }
+            }
+
+            for (let i of range) {
+              if (l) {
+                if (i - l === 2) {
+                  rangeWithDots.push(l + 1);
+                } else if (i - l !== 1) {
+                  rangeWithDots.push('...');
+                }
+              }
+              rangeWithDots.push(i);
+              l = i;
+            }
+
+            return rangeWithDots.map((page, index) => (
+              <button
+                key={index}
+                onClick={() => typeof page === 'number' ? setPagination({ ...pagination, page }) : null}
+                disabled={page === '...'}
+                className={`w-7 h-7 sm:w-8 sm:h-8 rounded sm:rounded-lg transition font-black text-[9px] uppercase tracking-tighter ${
+                  page === '...' 
+                    ? "cursor-default text-gray-700"
+                    : pagination.page === page
+                      ? "bg-purple-600 text-white shadow-lg border border-purple-500/50"
+                      : "bg-white/5 text-gray-500 hover:bg-white/10 hover:text-white border border-white/5"
+                }`}
+              >
+                {page}
+              </button>
+            ));
+          })()}
         </div>
       )}
       {/* Custom Scrollbar Styling */}
       <style>{`
         .custom-scrollbar::-webkit-scrollbar {
-            height: 6px;
+            height: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
             background: rgba(255, 255, 255, 0.02);
@@ -409,9 +433,6 @@ const UserManagement = ({
         .custom-scrollbar::-webkit-scrollbar-thumb {
             background: linear-gradient(to right, rgba(168, 85, 247, 0.3), rgba(99, 102, 241, 0.3));
             border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(to right, rgba(168, 85, 247, 0.5), rgba(99, 102, 241, 0.5));
         }
       `}</style>
     </div>

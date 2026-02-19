@@ -91,23 +91,50 @@ const RewardsManagement = ({
 
       {/* Pagination */}
       {pagination && pagination.pages > 1 && (
-        <div className="flex justify-center gap-2 mt-8">
-          {Array.from(
-            { length: pagination.pages },
-            (_, i) => i + 1,
-          ).map((page) => (
-            <button
-              key={page}
-              onClick={() => setPagination({ ...pagination, page })}
-              className={`w-10 h-10 rounded-xl transition font-bold text-xs ${
-                pagination.page === page
-                  ? "bg-purple-600 text-white shadow-lg shadow-purple-600/25"
-                  : "bg-white/5 text-gray-500 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              {page}
-            </button>
-          ))}
+        <div className="flex flex-wrap justify-center gap-2 mt-8 px-4">
+          {(() => {
+            const current = pagination.page;
+            const total = pagination.pages;
+            const delta = 1;
+            const range = [];
+            const rangeWithDots = [];
+            let l;
+
+            for (let i = 1; i <= total; i++) {
+              if (i === 1 || i === total || (i >= current - delta && i <= current + delta)) {
+                range.push(i);
+              }
+            }
+
+            for (let i of range) {
+              if (l) {
+                if (i - l === 2) {
+                  rangeWithDots.push(l + 1);
+                } else if (i - l !== 1) {
+                  rangeWithDots.push('...');
+                }
+              }
+              rangeWithDots.push(i);
+              l = i;
+            }
+
+            return rangeWithDots.map((page, index) => (
+              <button
+                key={index}
+                onClick={() => typeof page === 'number' ? setPagination({ ...pagination, page }) : null}
+                disabled={page === '...'}
+                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl transition font-black text-[10px] uppercase tracking-tighter ${
+                  page === '...' 
+                    ? "cursor-default text-gray-700"
+                    : pagination.page === page
+                      ? "bg-purple-600 text-white shadow-lg shadow-purple-600/25 border border-purple-500/50"
+                      : "bg-white/5 text-gray-500 hover:bg-white/10 hover:text-white border border-white/5"
+                }`}
+              >
+                {page}
+              </button>
+            ));
+          })()}
         </div>
       )}
     </div>
