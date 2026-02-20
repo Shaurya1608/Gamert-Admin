@@ -82,7 +82,7 @@ api.interceptors.request.use(
         // Second priority: Document cookie (Same-domain fallback)
         const token = csrfToken || document.cookie
             .split("; ")
-            .find((row) => row.startsWith("csrfToken="))
+            .find((row) => row.startsWith("csrftoken=") || row.startsWith("csrfToken="))
             ?.split("=")[1];
         
         if (token) {
